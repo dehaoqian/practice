@@ -66,8 +66,10 @@ FLAG_DEBUG = False
 
 if not QUERY_DIR.exists():
     QUERY_DIR.mkdir()
-    
-def avoid_nan(value: Any):
+
+
+# Part 1 start  
+def avoid_nan(value):
     """Replace NaN in a cell with None to avoid errors when saving to the database"""
     if pd.isna(value):
         return None
