@@ -174,3 +174,227 @@ def download_nyc_geojson_data(url: str, force: bool = False):
         print(f"Reading from {filename}...")
 
     return filename
+
+def load_and_clean_zipcodes(zipcode_datafile) :
+    """Loading and cleaning the zip code dataset"""
+
+    gdf = gpd.read_file(zipcode_datafile)
+
+    mapping_k = ['ZIPCODE', 'PO_NAME', 'STATE', 'COUNTY', 'geometry']
+
+    mapping_v = ['zipcode', 'neighborhood', 'state', 'county', 'geometry']
+
+    name_mapping = dict(map(lambda value_key, value_value: (value_key, value_value), mapping_k, mapping_v))
+
+    gdf.crs = 'epsg:2263'
+
+    gdf = gdf.to_crs('epsg:4326')
+
+    # result = pd.DataFrame(gdf)
+    result = gdf
+
+    column_to_delete = []
+
+    for column_name in result.columns:
+
+        if column_name not in mapping_k:
+
+            column_to_delete.append(column_name)
+
+    result = result.drop(column_to_delete, axis=1)
+
+    result = result.rename(columns=name_mapping)
+
+    return result
+
+
+def download_and_clean_311_data():
+    """Loading and Cleaning 311 Complaint Data Set"""
+    # https://data.cityofnewyork.us/resource/erm2-nwe9.json
+
+    params = {
+        '$select': 'count(unique_key)',
+        # '$where': 'complaint_type LIKE "%25Noise%25" AND created_date >= "2022-01-01T00:00:00"::floating_timestamp',
+        '$where': 'created_date >= "2022-01-01T00:00:00"::floating_timestamp',
+    }
+
+    query_url = build_query_url(
+        'https://data.cityofnewyork.us/resource/erm2-nwe9.json', params, False)
+
+    print('Will call get_with_cache() ... 1')
+    dataset_path = get_with_cache(query_url, update=False)
+    print('     Call get_with_cache() ... 1 ... end')
+
+    jsonStr = '[]'
+
+    with open(dataset_path, 'rb') as file_handle:
+        jsonStr = file_handle.read().decode()
+
+    row_count_since_20220101 = debug_warp(
+        int(json.loads(jsonStr)[0]['count_unique_key']))
+
+    query_url = build_query_url(
+        'https://data.cityofnewyork.us/resource/erm2-nwe9.json', params, False)
+
+    collected_row_count = 0
+
+    result = gpd.GeoDataFrame()
+
+    print(f'Report {collected_row_count} / {row_count_since_20220101} ...')
+
+    while collected_row_count < row_count_since_20220101:
+
+        print(
+            f'Collect {collected_row_count} / {row_count_since_20220101} ...')
+
+        params = {
+            '$select': 'unique_key, created_date, complaint_type, incident_zip, latitude, longitude',
+            # '$where': 'complaint_type LIKE "%25Noise%25" AND created_date >= "2022-01-01T00:00:00"::floating_timestamp',
+            '$where': 'created_date >= "2022-01-01T00:00:00"::floating_timestamp',
+            '$limit': '150000',
+            '$offset': collected_row_count
+        }
+
+        query_url = build_query_url(
+            'https://data.cityofnewyork.us/resource/erm2-nwe9.json', params, False)
+
+        print('Will call get_with_cache() ... 2')
+        dataset_path = get_with_cache(query_url)
+
+        jsonStr = '[]'
+
+        with open(dataset_path, 'rb') as file_handle:
+            jsonStr = file_handle.read().decode()
+
+        jsonObject = json.loads(jsonStr)
+
+        part_dataframe = pd.DataFrame.from_records(jsonObject)
+
+        result = pd.concat([result, part_dataframe], ignore_index=True)
+
+        collected_row_count += len(jsonObject)
+
+    result['incident_zip'].fillna(value=-1, inplace=True)
+    result['geometry'] = gpd.points_from_xy(
+        result['longitude'], result['latitude'])
+    result = result.drop(['latitude', 'longitude'], axis=1)
+
+    return result
+
+def download_and_clean_tree_data():
+    """Load and clean the tree dataset"""
+
+    # https://data.cityofnewyork.us/resource/5rq2-4hqu.json
+
+    # ["tree_id", "spc_common", "zipcode", "status", "the_geom"]
+
+    params = {
+        "$select": "count(tree_id)"
+    }
+
+    query_url = build_query_url(
+        "https://data.cityofnewyork.us/resource/5rq2-4hqu.json", params, False
+    )
+
+    dataset_path = get_with_cache(query_url, update=False)
+
+    jsonStr = "[]"
+
+    with open(dataset_path, "rb") as file_handle:
+
+        jsonStr = file_handle.read().decode()
+
+    row_count = debug_warp(int(json.loads(jsonStr)[0]["count_tree_id"]))
+
+    collected_row_count = 0
+
+    result = gpd.GeoDataFrame()
+
+    while collected_row_count < row_count:
+
+        print(f"Collect {collected_row_count} / {row_count} ...")
+
+        params = {
+            "$select": "tree_id, spc_common, zipcode, status, health, the_geom",
+            "$limit": "150000",
+            "$offset": collected_row_count,
+        }
+
+        query_url = build_query_url(
+            "https://data.cityofnewyork.us/resource/5rq2-4hqu.json", params, False
+        )
+
+        dataset_path = get_with_cache(query_url)
+
+        jsonStr = "[]"
+
+        with open(dataset_path, "rb") as file_handle:
+
+            jsonStr = file_handle.read().decode()
+
+        jsonObject = json.loads(jsonStr)
+
+        part_dataframe = pd.DataFrame.from_records(jsonObject)
+
+        result = pd.concat([result, part_dataframe], ignore_index=True)
+
+        collected_row_count += len(jsonObject)
+
+    result = result.rename(columns={"the_geom": "geometry"})
+
+    result['geometry'] = result['geometry'].apply(shape)
+
+    return result
+
+def load_and_clean_zillow_data():
+    """Load and clean historical rental dataset"""
+
+    df = pd.read_csv(ZILLOW_DATA_FILE)
+
+    df = df.drop(['RegionID', 'SizeRank', 'RegionType', 'StateName',
+                 'City', 'Metro', 'CountyName'], axis=1)
+
+    df = df.rename(columns={'RegionName': 'zipcode'})
+
+    columns = df.columns
+
+    columns = columns[2:]
+
+    result = pd.DataFrame()
+
+    values = []
+
+    for index, row in df.iterrows():
+
+        for column in columns:
+
+            new_row = {
+
+                'zipcode': row['zipcode'],
+
+                'state': row['State'],
+
+                'date': column,
+
+                'average_price': row[column]
+
+            }
+
+            values.append(new_row)
+
+    result = pd.DataFrame.from_records(values)
+
+    return result
+
+def load_all_data():
+    """Load all data"""
+
+    geodf_zipcode_data = load_and_clean_zipcodes(ZIPCODE_DATA_FILE)
+
+    geodf_311_data = download_and_clean_311_data()
+
+    geodf_tree_data = download_and_clean_tree_data()
+
+    df_zillow_data = load_and_clean_zillow_data()
+
+    return (geodf_zipcode_data, geodf_311_data, geodf_tree_data, df_zillow_data)
