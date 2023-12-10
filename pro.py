@@ -66,3 +66,109 @@ FLAG_DEBUG = False
 
 if not QUERY_DIR.exists():
     QUERY_DIR.mkdir()
+    
+def avoid_nan(value: Any):
+    """Replace NaN in a cell with None to avoid errors when saving to the database"""
+    if pd.isna(value):
+        return None
+    else:
+        return value
+
+
+def debug_warp(count: int):
+    """When FLAG_DEBUG is True, limit record size to 10000"""
+    if FLAG_DEBUG:
+        return 100000
+    else:
+        return count
+
+
+def build_query_url(base_url: str, queries: dict = {}, flag_use_token: bool = True):
+    """Build queries into url query string, and add api token to url"""
+    result = base_url[:] + "?"
+
+    if flag_use_token:
+        result += f"$$app_token={NYC_DATA_APP_TOKEN}&"
+
+    for key in queries:
+        result += f"{key}={queries[key]}&"
+
+    return result[:-1]
+
+
+def get_md5(content: str):
+    """Calculate the md5 of a string"""
+    if isinstance(content, str):
+        content = content.encode()
+    md5 = hashlib.md5()
+    md5.update(content)
+    return md5.hexdigest()
+
+
+def get_with_cache(url: str, update: bool = False):
+    """This function implements a get function with Cache"""
+    url_md5 = get_md5(url)
+    storage_path = DATA_DIR / url_md5
+
+    print('update or (not storage_path.exists()):',
+          update or (not storage_path.exists()))
+
+    if update or (not storage_path.exists()):
+        print(f"Downloading {url} ...")
+
+        session = requests.Session()
+        # session.headers.update({"X-App-Token": NYC_DATA_APP_TOKEN})
+        basic = requests.auth.HTTPBasicAuth(BASIC_USER, BASIC_PASS)
+
+        count = 5
+
+        while count >= 0:
+            response = None
+            print(f'Download try: {5 + 1 - count}')
+            try:
+                response = session.get(url, auth=basic)
+            except Exception:
+                print('Network error, retry')
+                count -= 1
+                continue
+
+            if response:
+                with open(storage_path, "wb") as file_handle:
+                    file_handle.write(response.content)
+                print(f"Done downloading {url}.")
+                break
+            else:
+                print(
+                    f"Download {url} fail, reason:",
+                    response.status_code,
+                    "message:",
+                    response.content.decode(),
+                )
+                continue
+
+    return storage_path
+
+
+def download_nyc_geojson_data(url: str, force: bool = False):
+    """This function is deprecated because it doesn't support url with query's very well"""
+    parsed_url = urllib.parse.urlparse(url)
+    url_path = parsed_url.path.strip("/")
+
+    filename = DATA_DIR / url_path
+
+    if force or not filename.exists():
+        print(f"Downloading {url} to {filename}...")
+
+        response = requests.get(url)
+        if response:
+            with open(filename, "w") as file_handle:
+                # json.dump(..., f)
+                file_handle.write(response.content)
+            print(f"Done downloading {url}.")
+        else:
+            print(f"Download {url} fail.")
+            return None
+    else:
+        print(f"Reading from {filename}...")
+
+    return filename
