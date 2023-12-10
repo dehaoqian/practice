@@ -398,3 +398,5 @@ def load_all_data():
     df_zillow_data = load_and_clean_zillow_data()
 
     return (geodf_zipcode_data, geodf_311_data, geodf_tree_data, df_zillow_data)
+
+geodf_zipcode_data, geodf_311_data, geodf_tree_data, df_zillow_data = load_all_data()
