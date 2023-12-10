@@ -1,0 +1,45 @@
+# .gitignore
+
+# Ignore data directory
+data/
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+*.ipynb_checkpoints
+*.Rhistory
+*.RData
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Datasets
+*.csv
+*.tsv
+*.xlsx
+
+# Log files
+*.log
+
+# Other
+.DS_Store
