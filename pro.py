@@ -63,3 +63,6 @@ BASIC_PASS = '5vwh31bomglif6wi66lb1py390txqu57vkgv8319f2kg1hxkuk'
 
 # When FLAG_DEBUG == True, record size will be limited to 100,000
 FLAG_DEBUG = False
+
+if not QUERY_DIR.exists():
+    QUERY_DIR.mkdir()
