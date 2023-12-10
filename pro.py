@@ -36,3 +36,30 @@ import string
 import os
 
 import warnings
+
+# Where data files will be read from/written to - this should already exist
+DATA_DIR = pathlib.Path("data")
+
+# ZIPCODE_DATA_FILE = DATA_DIR / "zipcodes" / "ZIP_CODE_040114.shp"
+ZIPCODE_DATA_FILE = DATA_DIR / "zipcodes" / "nyc_zipcodes.shp"
+
+ZILLOW_DATA_FILE = DATA_DIR / "zillow_rent_data.csv"
+
+NYC_DATA_APP_TOKEN = "EqSebYPKeoZPWmssyC2rvIPN8"
+BASE_NYC_DATA_URL = "https://data.cityofnewyork.us/"
+NYC_DATA_311 = "erm2-nwe9.geojson"
+NYC_DATA_TREES = "5rq2-4hqu.geojson"
+
+DB_NAME = "apartment"
+DB_USER = "postgres"
+DB_URL = f"postgresql+psycopg2://{DB_USER}@localhost/{DB_NAME}"
+DB_SCHEMA_FILE = "schema.sql"
+# directory where DB queries for Part 3 will be saved
+QUERY_DIR = pathlib.Path("queries")
+
+BASIC_USER = 'bo8yv64rbrt1cas4iyua598vp'
+BASIC_PASS = '5vwh31bomglif6wi66lb1py390txqu57vkgv8319f2kg1hxkuk'
+
+
+# When FLAG_DEBUG == True, record size will be limited to 100,000
+FLAG_DEBUG = False
