@@ -400,3 +400,10 @@ def load_all_data():
     return (geodf_zipcode_data, geodf_311_data, geodf_tree_data, df_zillow_data)
 
 geodf_zipcode_data, geodf_311_data, geodf_tree_data, df_zillow_data = load_all_data()
+
+geodf_311_data.info()
+geodf_311_data.head()
+geodf_tree_data.info()
+geodf_tree_data.head()
+df_zillow_data.info()
+df_zillow_data.head()
